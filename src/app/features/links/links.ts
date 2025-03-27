@@ -2,11 +2,12 @@ import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { SectionNavComponent } from '../../../shared/components/section-nav/section-nav';
 import { LinksStore } from './services/links-store';
 import { LinksDataService } from './services/links-data';
+import { ReadingListApiService } from './services/reading-list-data';
 
 @Component({
   selector: 'app-links',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  providers: [LinksStore, LinksDataService],
+  providers: [LinksStore, LinksDataService, ReadingListApiService],
   imports: [SectionNavComponent],
   template: `
     <app-section-nav

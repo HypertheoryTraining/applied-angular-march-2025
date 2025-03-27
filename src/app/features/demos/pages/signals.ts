@@ -28,10 +28,17 @@ import { ButtonDirective } from '@app-shared/directives';
         <app-odd-even-indicator [current]="current()" />
       </div>
     }
+
+    @for (n of range(6); track $index) {
+      <p>thing</p>
+    }
   `,
   styles: ``,
 })
 export class SignalsDemoComponent {
+  range(n: number): number[] {
+    return Array.from({ length: n }, (_, i) => i);
+  }
   current = signal(0);
 
   showReset = computed(() => this.current() !== 0);

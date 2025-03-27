@@ -1,12 +1,21 @@
+import { inject } from '@angular/core';
 import {
   patchState,
   signalStoreFeature,
   type,
   withMethods,
 } from '@ngrx/signals';
-import { addEntity, withEntities } from '@ngrx/signals/entities';
+import {
+  addEntity,
+  removeEntity,
+  setEntities,
+  withEntities,
+} from '@ngrx/signals/entities';
+import { rxMethod } from '@ngrx/signals/rxjs-interop';
+import { ReadingListApiService } from './reading-list-data';
+import { mergeMap, switchMap, tap } from 'rxjs';
 
-type ReadingListItem = {
+export type ReadingListItem = {
   id: string;
   titleId: string;
   note: string;
@@ -20,17 +29,61 @@ export function withReadingList() {
       collection: 'readingList',
     }),
     withMethods((store) => {
+      const api = inject(ReadingListApiService);
       return {
-        addItemToReadingList: (id: string, note: string) => {
-          const newItem: ReadingListItem = {
-            id: crypto.randomUUID(),
-            titleId: id,
-            note,
-
-            addedAt: new Date().toISOString(),
-          };
-          patchState(store, addEntity(newItem, { collection: 'readingList' }));
-        },
+        loadReadingList: rxMethod<void>(
+          switchMap(() =>
+            api
+              .getReadingList()
+              .pipe(
+                tap((items) =>
+                  patchState(
+                    store,
+                    setEntities(items, { collection: 'readingList' }),
+                  ),
+                ),
+              ),
+          ),
+        ),
+        deleteFromReadingList: rxMethod<string>(
+          mergeMap((id) =>
+            api.deleteFromReadingList(id).pipe(
+              tap(() =>
+                patchState(
+                  store,
+                  removeEntity(id, { collection: 'readingList' }), // remove the item from the store
+                ),
+              ),
+            ),
+          ),
+        ),
+        updateReadingListItem: rxMethod<{
+          item: ReadingListItem;
+          note: string;
+        }>(
+          mergeMap(({ item, note }) =>
+            api.updateReadingListItem(item, note).pipe(
+              tap((item) =>
+                patchState(
+                  store,
+                  addEntity(item, { collection: 'readingList' }), // add the item to the store
+                ),
+              ),
+            ),
+          ),
+        ),
+        addItemToReadingList: rxMethod<{ id: string; note: string }>(
+          mergeMap(({ id, note }) =>
+            api.addToReadingList({ id, note }).pipe(
+              tap((item) =>
+                patchState(
+                  store,
+                  addEntity(item, { collection: 'readingList' }), // add the item to the store
+                ),
+              ),
+            ),
+          ),
+        ),
       };
     }),
   );

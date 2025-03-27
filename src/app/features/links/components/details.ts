@@ -2,6 +2,7 @@ import { Location } from '@angular/common';
 import {
   ChangeDetectionStrategy,
   Component,
+  effect,
   ElementRef,
   inject,
   input,
@@ -10,6 +11,7 @@ import {
 } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { LinksStore } from '../services/links-store';
+import { ReadingListItem } from '../services/reading-list-store-feature';
 @Component({
   selector: 'app-link-details',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -32,9 +34,22 @@ import { LinksStore } from '../services/links-store';
                 rows="8"
               ></textarea>
             </label>
-            <button type="submit" class="btn btn-primary">
-              Add To Reading List
-            </button>
+            @if (link.onReadingList) {
+              <button type="submit" class="btn btn-primary">
+                Update Note In Reading List
+              </button>
+              <button
+                type="button"
+                class="btn btn-error"
+                (click)="removeFromReadingList(link.id)"
+              >
+                Remove from Reading List
+              </button>
+            } @else {
+              <button type="submit" class="btn btn-primary">
+                Add To Reading List
+              </button>
+            }
           </form>
           <div class="modal-action">
             <form method="dialog" (submit)="close()">
@@ -59,6 +74,16 @@ export class DetailsComponent implements OnInit {
     this.store.setSelectedId(this.id());
   }
 
+  constructor() {
+    effect(() => {
+      const link = this.store.selectedLink();
+      if (link) {
+        this.form.patchValue({
+          note: link.note,
+        });
+      }
+    });
+  }
   location = inject(Location);
   close() {
     this.store.clearSelectedId();
@@ -66,7 +91,22 @@ export class DetailsComponent implements OnInit {
   }
 
   addToReadingList() {
-    this.store.addItemToReadingList(this.id(), this.form.controls.note.value);
+    // this.store.additemToReadingList
+    if (this.store.selectedLink()?.onReadingList) {
+      this.store.updateReadingListItem({
+        item: this.store.selectedLink()! as unknown as ReadingListItem,
+        note: this.form.controls.note.value,
+      });
+    } else {
+      this.store.addItemToReadingList({
+        id: this.id(),
+        note: this.form.controls.note.value,
+      });
+    }
+    this.close();
+  }
+  removeFromReadingList(id: string) {
+    this.store.deleteFromReadingList(id);
     this.close();
   }
 }

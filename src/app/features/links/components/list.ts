@@ -1,11 +1,5 @@
-import {
-  ChangeDetectionStrategy,
-  Component,
-  computed,
-  inject,
-  signal,
-} from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
   ActivatedRoute,
   RouterLink,
@@ -14,27 +8,35 @@ import {
 } from '@angular/router';
 import { CardComponent } from '@app-shared/components';
 import { map, tap } from 'rxjs';
-import { LinksDataService } from '../services/links-data';
 import { LinksStore } from '../services/links-store';
+import { HeartFullComponent } from './heart-full';
+import { HeartHollowComponent } from './heart-hollow';
 
 @Component({
   selector: 'app-links-list',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  imports: [CardComponent, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [
+    CardComponent,
+    RouterLink,
+    RouterLinkActive,
+    RouterOutlet,
+    HeartFullComponent,
+    HeartHollowComponent,
+  ],
   template: `
-    @if (listOfLinks()) {
+    @if (store.listOfLinks()) {
       <router-outlet />
       <div class="flex flex-row flex-wrap gap-2">
-        @if (filteringBy()) {
+        @if (store.filteringBy()) {
           <a [routerLink]="[]" [queryParams]="{}" class="btn"> Show All </a>
         }
-        @for (tag of uniqueTags(); track tag) {
+        @for (tag of store.uniqueTags(); track tag) {
           <a
             [routerLink]="[]"
             [queryParams]="{ tag }"
             [routerLinkActive]="['btn-primary']"
             [class.btn-ghost]="
-              filteringBy() !== tag && filteringBy() !== undefined
+              store.filteringBy() !== tag && store.filteringBy() !== undefined
             "
             class="btn"
           >
@@ -43,9 +45,12 @@ import { LinksStore } from '../services/links-store';
         }
       </div>
       <div class="flex flex-row flex-wrap gap-4">
-        @for (link of filteredLinks(); track link.id) {
+        @for (link of store.listOfLinks(); track link.id) {
           <app-card [title]="link.title">
             <p class="text-accent">{{ link.description }}</p>
+            <a target="_blank" [href]="link.url" class="link" [title]="link.url"
+              ><span class="w-fit overflow-ellipsis">{{ link.url }}</span></a
+            >
             <div class="flex flex-row gap-4">
               @for (tag of link.tags; track tag) {
                 <a
@@ -57,16 +62,15 @@ import { LinksStore } from '../services/links-store';
               }
             </div>
             <div class="flex flex-row gap-4">
-              <a
-                target="_blank"
-                [href]="link.url"
-                class="btn btn-primary"
-                [title]="link.url"
-                >Visit Link</a
-              >
-              <a [routerLink]="[link.id]" class="btn btn-primary"
-                >See Details</a
-              >
+              @if (link.onReadingList) {
+                <a [routerLink]="[link.id]">
+                  <app-heart-full></app-heart-full>
+                </a>
+              } @else {
+                <a [routerLink]="[link.id]">
+                  <app-heart-hollow></app-heart-hollow
+                ></a>
+              }
             </div>
           </app-card>
         } @empty {
@@ -86,31 +90,11 @@ export class ListComponent {
     this.#activatedRoute.queryParamMap
       .pipe(
         map((params) => params.get('tag')),
-        tap((tag) => this.filteringBy.set(tag)),
+        tap((tag) => this.store.setFilteringBy(tag || undefined)),
         takeUntilDestroyed(), // this is super cool. can eliminate a lot of janky code.
       )
       .subscribe();
   }
-  service = inject(LinksDataService);
-  filteringBy = signal<string | undefined | null>(undefined);
-
-  listOfLinks = this.store.entities;
 
   // a computed signal that gives me all the unique tags from the listOfLinks
-  uniqueTags = computed(() => {
-    const links = this.listOfLinks();
-    if (!links) return [];
-    const tags = [...links]
-      .flatMap((link) => link.tags) // take a bunch of links [{... tags?: []}] and give me [... tags]
-      .filter(Boolean); // take out anything that doesn't match this predicate ()
-
-    return Array.from(new Set(tags));
-  });
-
-  filteredLinks = computed(() => {
-    const links = this.listOfLinks();
-    const filter = this.filteringBy();
-    if (!links || !filter) return links;
-    return links.filter((link) => link.tags?.includes(filter));
-  });
 }
