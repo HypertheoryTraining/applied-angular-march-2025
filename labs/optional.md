@@ -10,3 +10,5 @@
 - Fix anything you don't like that I did. Especially the styling stuff. It's atrocious.
 - The cards for the links in the "Developer Resources" could use some love. Really awkward design.
 - Create new components, directives,
+
+-- Anything else
