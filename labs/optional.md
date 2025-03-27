@@ -12,3 +12,5 @@
 - Create new components, directives,
 
 -- Anything else
+
+-- a little note.
